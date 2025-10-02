@@ -1,12 +1,16 @@
 import tkinter as tk
 from tkinter import scrolledtext
 import os
+import sys
 
 class Emulator:
-    def __init__(self, root_window):
+    def __init__(self, root_window, vfs_path=None, script_path=None):
         self.root = root_window
         self.root.title("VFS")
         self.root.geometry("800x600")
+        self.vfs_path = vfs_path
+        self.script_path = script_path
+
         main_frame = tk.Frame(self.root, bg="#2d2d2d")
         # Растягивается по всей ширине и высоте окна
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -49,6 +53,50 @@ class Emulator:
         self.input_entry.pack(fill=tk.X, expand=True, side=tk.LEFT)
         self.input_entry.bind("<Return>", self.handle_command)
         self.write_to_output("Welcome to the VFS Emulator!\n")
+        self.write_to_output(f"VFS Path: {self.vfs_path or 'Not specified'}\n")
+        self.write_to_output(f"Script Path: {self.script_path or 'Not specified'}\n")
+
+        # Передан путь к скрипт
+        if self.script_path:
+            self.root.after(100, self.execute_script)
+
+    def execute_script(self):
+        try:
+            with open(self.script_path, 'r') as f:
+                for line in f:
+                    # Удаляем пробелы и символы новой строки в начале и конце
+                    line = line.strip()
+                    self.write_to_output(f"> {line}\n")
+                    # Выполняем команду и проверяем успешность выполнения
+                    if not self.process_command(line):
+                        self.write_to_output("Script stoped due to error\n")
+                        break
+        except FileNotFoundError:
+            self.write_to_output(f"Error: Script file not found\n")
+
+    def process_command(self, command_line):
+        if command_line.startswith('$'):
+            var_name = command_line[1:]
+            # os.environ словарь переменных окружения операционной системы
+            var_value = os.environ.get(var_name, command_line)
+            self.write_to_output(var_value + "\n")
+            return True
+
+        command_name, *args = command_line.split()
+
+        match command_name:
+            case "ls":
+                self.write_to_output(f"ls {args}\n")
+                return True
+            case "cd":
+                self.write_to_output(f"cd {args}\n")
+                return True
+            case "exit":
+                self.root.destroy()
+                return True
+            case _:
+                self.write_to_output(f"Error: command not found: {command_name}\n")
+                return False
 
     def write_to_output(self, text):
         # Разрешаем редактирование
@@ -57,6 +105,7 @@ class Emulator:
         self.output_area.insert(tk.END, text)
         # Запрещаем редактирование
         self.output_area.configure(state='disabled')
+        self.output_area.see(tk.END)
 
     def handle_command(self, event):
         # Получаем текст из поля ввода
@@ -65,28 +114,20 @@ class Emulator:
             return
 
         self.write_to_output(f"> {command_line}\n")
+        # Очищает поле ввода
         self.input_entry.delete(0, tk.END)
+        self.process_command(command_line)
 
-        if command_line.startswith('$'):
-            var_name = command_line[1:]
-             # os.environ словарь переменных окружения операционной системы
-            var_value = os.environ.get(var_name, command_line)
-            self.write_to_output(var_value + "\n")
-            return
+vfs_path = None
+script_path = None
 
-        command_name, *args = command_line.split()
+if len(sys.argv) > 1:
+    vfs_path = sys.argv[1]
+if len(sys.argv) > 2:
+    script_path = sys.argv[2]
 
-        match command_name:
-            case "ls":
-                self.write_to_output(f"ls {args}\n")
-            case "cd":
-                self.write_to_output(f"cd {args}\n")
-            case "exit":
-                self.root.destroy()
-            case _:
-                self.write_to_output(f"Error: command not found: {command_name}\n")
-
-# Создаём главное окно
 root = tk.Tk()
-app = Emulator(root)
+app = Emulator(root, vfs_path, script_path)
 root.mainloop()
+
+
