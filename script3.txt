@@ -1,0 +1,5 @@
+ls fds 34
+cd 34 34
+$USERNAME
+$USERPROFILE
+sdfs

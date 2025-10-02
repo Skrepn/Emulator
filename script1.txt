@@ -1,0 +1,4 @@
+ls sfd sdf
+cd sf fd 123
+$USERPROFILE
+dfs 
